@@ -1,0 +1,33 @@
+- name: Build Mongo Servers in Rax Cloud
+  hosts: local
+  gather_facts: False
+  tasks:
+    - name: Server build request
+      local_action:
+        module: rax
+        name: mongo%01d
+        credentials: .rax_creds_file
+        count: 4
+        exact_count: yes
+        key_name: rax_max
+        flavor: performance1-1 
+        image: 25de7af5-1668-46fb-bd08-9974b63a4806
+        wait: yes
+        group: mongo_servers
+        state: present
+      register: rax
+    - name: Add Mongo Servers to mongodb
+      local_action:
+        module: add_host
+        hostname: "{{ item.name }}"
+        ansible_ssh_host: "{{ item.rax_accessipv4 }}"
+        ansible_ssh_user: root
+        ansible_ssh_pass: "{{ item.rax_adminpass }}"
+        groupname: mongo_servers
+      with_items: rax.success
+      when: rax.action == 'create'
+- name: Install Mongodb packages
+  hosts: mongo_servers
+  roles:
+   - role: common
+
